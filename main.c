@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> 
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
-// Pronto
 typedef struct beneficiario { //____001#Joao#Unimed#Plano de Saude
     int ID;
     char Nome[50];
@@ -14,7 +14,6 @@ typedef struct beneficiario { //____001#Joao#Unimed#Plano de Saude
 char buffer[139];
 char filename[30];
 
-// Pronto
 char* transformaEmChar(int value) {
     char *result = malloc(sizeof(char) * 4);
     if (value < 0 || value > 999) {
@@ -25,7 +24,6 @@ char* transformaEmChar(int value) {
     return result;
 }
 
-// Pronto
 int transformaEmInt(char *value) {
     if (strlen(value) != 3) {
         return -1;
@@ -33,7 +31,6 @@ int transformaEmInt(char *value) {
     return atoi(value);
 }
 
-//Pronto
 char* concat(int numInputs, ...) {
     va_list args;
     va_start(args, numInputs);
@@ -62,14 +59,12 @@ char* concat(int numInputs, ...) {
     return result;
 }
 
-// Pronto
 char* concatBeneficiario(Beneficiario *input) {
     strcpy(buffer, concat(4, transformaEmChar(input->ID), input->Nome, input->Seguradora, input->tipoSeg));
     return buffer;
 }
 
-// Pronto
-int busca_espaco_livre_na_lista(FILE *fp, int tamanho) {
+int busca_espaco_livre_na_lista(FILE *fp, long unsigned int tamanho) {
     int posicao_inicial = ftell(fp);
 
     fseek(fp,0,0);
@@ -79,7 +74,7 @@ int busca_espaco_livre_na_lista(FILE *fp, int tamanho) {
 
     while (atpos != -1) {
         fseek(fp, atpos, SEEK_SET);
-        int tam_buffer;
+        long unsigned int tam_buffer;
         fread(&tam_buffer, sizeof(int), 1, fp);
 
         int next_pos = -1;
@@ -99,7 +94,6 @@ int busca_espaco_livre_na_lista(FILE *fp, int tamanho) {
     return -1;
 }
 
-// Pronto
 int busca_espaco_livre(FILE *fp, int size) {
     int byte_offset = busca_espaco_livre_na_lista(fp, size);
 
@@ -111,8 +105,7 @@ int busca_espaco_livre(FILE *fp, int size) {
     return ftell(fp);
 }
 
-// Pronto
-void Insere(char *string, FILE *fp) {   
+bool Insere(char *string, FILE *fp) {   
     int string_len = strlen(string), gapsize = 0, byteindex = busca_espaco_livre(fp, string_len);
     fseek(fp, byteindex, SEEK_SET);
     fread(&gapsize, sizeof(int), 1, fp);
@@ -148,7 +141,6 @@ void Insere(char *string, FILE *fp) {
     }
 }
 
-// Pronto
 void remover (FILE * fp, int remocao){
     char codigoRemocao[4];
     strcpy(codigoRemocao, transformaEmChar(remocao));
@@ -181,7 +173,6 @@ void remover (FILE * fp, int remocao){
     }
 }
 
-// Pronto
 void compactar(FILE* fp){
     FILE *temp = fopen("compact.bin", "w+b"); // Cria um arquivo temporario
     int inicializador = -1; // Inicializa o primeiro registro
@@ -214,20 +205,72 @@ void compactar(FILE* fp){
     fclose(temp);
 }
 
-//Pronto
+// ⬆️⬆️⬆️ Código antigo ⬆️⬆️⬆️
+
+Beneficiario *load(FILE *input_file, int *tam_destino){
+    rewind(input_file); // Volta para o início do arquivo
+
+    typedef struct seg{ // Modelo dos dados inseridos.
+        char cod_cli[4];
+        char nome_cli[50];
+        char nome_seg[50];
+        char tipo_seg[30];
+    } Seg;
+
+    Seg seg; // Variável temporária para armazenar os dados lidos do arquivo binário
+
+    (*tam_destino) = 0; // Inicializa o número de beneficiários como zero
+
+    while(fread(&seg, sizeof(Seg), 1, input_file) != 0){ // Enquanto não chegar no fim do arquivo
+        (*tam_destino)++; // Incrementa o número de beneficiários
+    }
+
+    rewind(input_file); // Volta para o início do arquivo
+
+    Beneficiario *buffer_beneficiarios = malloc((*tam_destino) * sizeof(Beneficiario)); // Aloca o vetor com o tamanho correto
+
+    for(int i = 0; i < (*tam_destino); i++){ // Para cada beneficiário no arquivo binário
+        fread(&seg, sizeof(Seg), 1, input_file); // Lê os dados do arquivo binário
+
+        // Atribui os valores lidos do arquivo binário aos campos correspondentes do beneficiário no vetor
+        buffer_beneficiarios[i].ID = atoi(seg.cod_cli);
+        strcpy(buffer_beneficiarios[i].Nome, seg.nome_cli);
+        strcpy(buffer_beneficiarios[i].Seguradora, seg.nome_seg);
+        strcpy(buffer_beneficiarios[i].tipoSeg, seg.tipo_seg);
+    }
+
+    return buffer_beneficiarios;
+}
+
 int main() {
+
+    FILE *input_file; // Abre o arquivo binário para leitura e escrita
+    
+    if((input_file = fopen("insere.bin", "r+b")) == NULL)
+        return 1;
+
+    int tamanho = 0;
+    Beneficiario *inputs = load(input_file, &tamanho);
+
+
+    for(int i = 0; i < tamanho; i++){
+        printf("%d\n%s\n%s\n%s\n---------------\n\n", inputs[i].ID, inputs[i].Nome, inputs[i].Seguradora, inputs[i].tipoSeg);
+    }
+
+    // ⬇️⬇️⬇️ Código antigo ⬇️⬇️⬇️
+
+    /*
     printf("Selecione o arquivo:");
     char filename[30];
     scanf("%s",filename);
     FILE *fp;
 
-    if(fopen(filename, "r+b") == NULL){
+    if((fp = fopen(filename, "r+b")) == NULL){
         fp = fopen(filename, "w+b");
         printf("Arquivo criado com sucesso!\n"); 
         int inicializador = -1;
         fwrite(&inicializador, sizeof(int), 1, fp);
     }else{
-        fp = fopen(filename, "r+b");
         printf("Arquivo aberto com sucesso!\n"); 
     }
 
@@ -269,4 +312,5 @@ int main() {
                 printf("Opcao invalida. Tente novamente.\n");
         }
     }
+    */
 }
